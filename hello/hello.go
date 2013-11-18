@@ -8,7 +8,20 @@ import (
 	"appengine"
 	"appengine/datastore"
 	"appengine/user"
+
+	//"code.google.com/p/gorilla/appengine/sessions"
+	"github.com/hnakamur/gaesessions"
+	//"github.com/gorilla/sessions"
+	"github.com/gorilla/securecookie"
 )
+
+//var store = sessions.NewCookieStore([]byte("something-very-secret"))
+//var store = gaesessions.NewDatastoreStore("", []byte("something-very-secret"))
+
+//var store = gaesessions.NewMemcacheStore("", []byte("something-very-secret"))
+//var store = gaesessions.NewMemcacheDatastoreStore("", "", []byte("something-very-secret"))
+//var store = gaesessions.NewMemcacheDatastoreStore("", "", nil)
+var store = gaesessions.NewMemcacheDatastoreStore("", "", securecookie.GenerateRandomKey(128))
 
 type Greeting struct {
 	Author  string
@@ -19,6 +32,42 @@ type Greeting struct {
 func init() {
 	http.HandleFunc("/", root)
 	http.HandleFunc("/sign", sign)
+	http.HandleFunc("/session", sessionHandler)
+	http.HandleFunc("/session2", session2Handler)
+}
+
+func sessionHandler(w http.ResponseWriter, r *http.Request) {
+	// Get a session. We're ignoring the error resulted from decoding an
+	// existing session: Get() always returns a session, even if empty.
+	session, _ := store.Get(r, "session-name")
+	session.Options.MaxAge = 20
+	// Set some session values.
+	session.Values["foo"] = "bar"
+	session.Values[42] = 43
+	// Save it.
+	err := session.Save(r, w)
+	if err != nil {
+		c := appengine.NewContext(r)
+		c.Errorf("session.Save failed. err=%s", err.Error())
+	}
+}
+
+func session2Handler(w http.ResponseWriter, r *http.Request) {
+	// Get a session. We're ignoring the error resulted from decoding an
+	// existing session: Get() always returns a session, even if empty.
+	session, _ := store.Get(r, "session-name")
+	c := appengine.NewContext(r)
+	c.Debugf("session values. foo=%s", session.Values["foo"])
+	c.Debugf("session values. 42=%d", session.Values[42])
+	//session.Options.MaxAge = 0
+	if session.Values[42] != nil {
+		session.Values[42] = session.Values[42].(int) + 1
+	}
+	// Save it.
+	err := session.Save(r, w)
+	if err != nil {
+		c.Errorf("session.Save failed. err=%s", err.Error())
+	}
 }
 
 func guestbookKey(c appengine.Context) *datastore.Key {
