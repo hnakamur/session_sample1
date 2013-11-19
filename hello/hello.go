@@ -34,13 +34,14 @@ func init() {
 	http.HandleFunc("/sign", sign)
 	http.HandleFunc("/session", sessionHandler)
 	http.HandleFunc("/session2", session2Handler)
+	http.HandleFunc("/tasks/removeExpiredSessions", removeExpiredSessionsHandler)
 }
 
 func sessionHandler(w http.ResponseWriter, r *http.Request) {
 	// Get a session. We're ignoring the error resulted from decoding an
 	// existing session: Get() always returns a session, even if empty.
 	session, _ := store.Get(r, "session-name")
-	session.Options.MaxAge = 20
+	//session.Options.MaxAge = 30
 	// Set some session values.
 	session.Values["foo"] = "bar"
 	session.Values[42] = 43
@@ -68,6 +69,11 @@ func session2Handler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		c.Errorf("session.Save failed. err=%s", err.Error())
 	}
+}
+
+func removeExpiredSessionsHandler(w http.ResponseWriter, r *http.Request) {
+	c := appengine.NewContext(r)
+	gaesessions.RemoveExpiredDatastoreSessions(c, "")
 }
 
 func guestbookKey(c appengine.Context) *datastore.Key {

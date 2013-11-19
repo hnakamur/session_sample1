@@ -1,0 +1,4 @@
+cron:
+- description: expired session removal job
+  url: /tasks/removeExpiredSessions
+  schedule: every 1 minutes
